@@ -1,1 +1,8 @@
-spring.application.name=FilmCatologService
+spring:
+  application:
+    name: FilmCatalogService
+server:
+  port: 8083
+servicedb:
+  api:
+    url: http://localhost:8081/api
