@@ -13,11 +13,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
-@Slf4j
 @RestController
-@RequestMapping("/api/catalog/films")
-@Tag(name = "Film Catalog API", description = "API for browsing and searching films")
+@RequestMapping("/api/catalog")
+@Slf4j
+@Tag(name = "Film Catalog API", description = "Endpoints for searching and retrieving films")
 public class FilmCatalogController {
 
     private final FilmCatalogService filmCatalogService;
@@ -27,44 +28,42 @@ public class FilmCatalogController {
         this.filmCatalogService = filmCatalogService;
     }
 
-    @Operation(summary = "Search and filter films", description = "Retrieves a list of films based on filters, sorting, and search criteria")
+    @GetMapping("/films")
+    @Operation(summary = "Search films", description = "Searches films based on various criteria")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Successfully retrieved list of films")
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved films"),
+            @ApiResponse(responseCode = "400", description = "Invalid search parameters")
     })
-    @GetMapping
-    public ResponseEntity<List<Film>> searchFilms(
-            @Parameter(description = "Search by film title (partial match)") @RequestParam(required = false) String title,
-            @Parameter(description = "Filter by genre IDs (comma-separated)") @RequestParam(required = false) List<Long> genreIds,
-            @Parameter(description = "Filter by release year") @RequestParam(required = false) Integer releaseYear,
-            @Parameter(description = "Filter by minimum rating") @RequestParam(required = false) Double minRating,
-            @Parameter(description = "Filter by original language") @RequestParam(required = false) String originalLanguage,
-            @Parameter(description = "Sort by field (releaseYear, rating, popularity)") @RequestParam(defaultValue = "releaseYear") String sortBy,
+    public List<Film> searchFilms(
+            @Parameter(description = "Film title (partial match)") @RequestParam(required = false) String title,
+            @Parameter(description = "Comma-separated list of genre names") @RequestParam(required = false) String genreNames,
+            @Parameter(description = "Release year") @RequestParam(required = false) Integer releaseYear,
+            @Parameter(description = "Minimum rating") @RequestParam(required = false) Double minRating,
+            @Parameter(description = "Original language") @RequestParam(required = false) String originalLanguage,
+            @Parameter(description = "Sort field (releaseYear, rating, popularity)") @RequestParam(defaultValue = "releaseYear") String sortBy,
             @Parameter(description = "Sort direction (asc, desc)") @RequestParam(defaultValue = "desc") String sortDirection) {
-
-        log.info("Searching films with title: {}, genres: {}, year: {}, minRating: {}, language: {}, sortBy: {}, sortDirection: {}",
-                title, genreIds, releaseYear, minRating, originalLanguage, sortBy, sortDirection);
-
-        List<Film> films = filmCatalogService.searchFilms(title, genreIds, releaseYear, minRating, originalLanguage, sortBy, sortDirection);
-        log.debug("Retrieved {} films", films.size());
-        return ResponseEntity.ok(films);
+        log.info("Searching films with criteria: title={}, genreNames={}, releaseYear={}, minRating={}, originalLanguage={}, sortBy={}, sortDirection={}",
+                title, genreNames, releaseYear, minRating, originalLanguage, sortBy, sortDirection);
+        List<Film> films = filmCatalogService.searchFilms(title, genreNames, releaseYear, minRating, originalLanguage, sortBy, sortDirection);
+        log.debug("Found {} films", films.size());
+        return films;
     }
 
+    @GetMapping("/films/{id}")
     @Operation(summary = "Get film by ID", description = "Retrieves a film by its ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successfully retrieved film"),
             @ApiResponse(responseCode = "404", description = "Film not found")
     })
-    @GetMapping("/{id}")
     public ResponseEntity<Film> getFilmById(@Parameter(description = "ID of the film") @PathVariable Long id) {
         log.info("Fetching film with ID: {}", id);
-        return filmCatalogService.getFilmById(id)
-                .map(film -> {
-                    log.debug("Found film: {}", film.getTitle());
-                    return ResponseEntity.ok(film);
-                })
-                .orElseGet(() -> {
-                    log.warn("Film with ID {} not found", id);
-                    return ResponseEntity.notFound().build();
-                });
+        Optional<Film> film = filmCatalogService.getFilmById(id);
+        if (film.isPresent()) {
+            log.debug("Found film: {}", film.get().getTitle());
+            return ResponseEntity.ok(film.get());
+        } else {
+            log.warn("Film with ID {} not found", id);
+            return ResponseEntity.notFound().build();
+        }
     }
 }
