@@ -2,7 +2,7 @@ spring:
   application:
     name: FilmCatalogService
 server:
-  port: 8083
+  port: 8088
 servicedb:
   api:
     url: http://localhost:8081/api
